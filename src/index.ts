@@ -25,9 +25,13 @@ const projectDir = path.resolve(args[0]);
 // Schema definitions
 const RunTestsArgsSchema = z.object({
   testFiles: z
-    .array(z.string())
+    .union([z.string(), z.array(z.string()), z.null(), z.undefined()])
     .optional()
-    .describe("Optional array of specific test files to run"),
+    .transform((files) => {
+      if (!files) return undefined;
+      return Array.isArray(files) ? files : [files];
+    })
+    .describe("Optional test file or array of test files to run"),
   updateMode: z
     .enum(["run", "watch"])
     .default("run")
@@ -36,9 +40,13 @@ const RunTestsArgsSchema = z.object({
 
 const WatchTestsArgsSchema = z.object({
   testFiles: z
-    .array(z.string())
+    .union([z.string(), z.array(z.string()), z.null(), z.undefined()])
     .optional()
-    .describe("Optional array of specific test files to watch"),
+    .transform((files) => {
+      if (!files) return undefined;
+      return Array.isArray(files) ? files : [files];
+    })
+    .describe("Optional test file or array of test files to watch"),
 });
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
@@ -132,10 +140,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for run_tests: ${parsed.error}`);
         }
 
+        // Configure Vitest to minimize console output
         const vitest = await startVitest("test", [], {
           root: projectDir,
           watch: parsed.data.updateMode === "watch",
-          include: parsed.data.testFiles || undefined,  // Pass undefined if no files specified
+          include: parsed.data.testFiles,
+          reporters: [], // Disable default reporters to prevent console output
+          silent: true, // Suppress most of Vitest's output
         });
 
         if (!vitest) {
@@ -163,10 +174,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for watch_tests: ${parsed.error}`);
         }
 
+        // Configure Vitest to minimize console output
         const vitest = await startVitest("test", [], {
           root: projectDir,
           watch: true,
-          include: parsed.data.testFiles || undefined,  // Pass undefined if no files specified
+          include: parsed.data.testFiles,
+          reporters: [], // Disable default reporters
+          silent: true, // Suppress most of Vitest's output
         });
 
         if (!vitest) {
@@ -202,8 +216,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Vitest MCP Server running on stdio");
-  console.error("Project directory:", projectDir);
+  // console.error("Vitest MCP Server running on stdio");
+  // console.error("Project directory:", projectDir);
 }
 
 runServer().catch((error) => {
