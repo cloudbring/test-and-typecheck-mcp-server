@@ -1,0 +1,26 @@
+{
+  "name": "@modelcontextprotocol/server-vitest",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "mcp-server-vitest": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "start": "node build/index.js",
+    "dev": "tsc -w"
+  },
+  "files": [
+    "build"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "vitest": "^1.6.0",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.22.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "typescript": "^5.3.3"
+  }
+}
