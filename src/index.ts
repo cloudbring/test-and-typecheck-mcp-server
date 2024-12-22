@@ -9,7 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { startVitest } from 'vitest/node';
+import { startVitest } from "vitest/node";
 import path from "path";
 
 // Command line argument parsing
@@ -24,18 +24,26 @@ const projectDir = path.resolve(args[0]);
 
 // Schema definitions
 const RunTestsArgsSchema = z.object({
-  testFiles: z.array(z.string()).optional().describe('Optional array of specific test files to run'),
-  updateMode: z.enum(['run', 'watch']).default('run').describe('Whether to run once or watch for changes'),
+  testFiles: z
+    .array(z.string())
+    .optional()
+    .describe("Optional array of specific test files to run"),
+  updateMode: z
+    .enum(["run", "watch"])
+    .default("run")
+    .describe("Whether to run once or watch for changes"),
 });
 
 const WatchTestsArgsSchema = z.object({
-  testFiles: z.array(z.string()).optional().describe('Optional array of specific test files to watch'),
+  testFiles: z
+    .array(z.string())
+    .optional()
+    .describe("Optional array of specific test files to watch"),
 });
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
-// Format test results in a readable way
 interface TestResult {
   name: string;
   status: string;
@@ -49,36 +57,36 @@ interface TestResult {
 function formatTestResults(results: any): string {
   const testResults = results.state.getTestResults() as TestResult[];
   const output = [];
-  
+
   // Summary counts
-  const passed = testResults.filter(t => t.status === 'pass').length;
-  const failed = testResults.filter(t => t.status === 'fail').length;
-  const skipped = testResults.filter(t => t.status === 'skip').length;
-  
-  output.push('Test Run Summary:');
+  const passed = testResults.filter((t) => t.status === "pass").length;
+  const failed = testResults.filter((t) => t.status === "fail").length;
+  const skipped = testResults.filter((t) => t.status === "skip").length;
+
+  output.push("Test Run Summary:");
   output.push(`Total Files: ${results.getTestFiles().length}`);
   output.push(`✓ Passed: ${passed}`);
   output.push(`✗ Failed: ${failed}`);
   output.push(`- Skipped: ${skipped}`);
-  
+
   // Detailed failures
   if (failed > 0) {
-    output.push('\nFailures:');
+    output.push("\nFailures:");
     testResults
-      .filter(t => t.status === 'fail')
-      .forEach(test => {
+      .filter((t) => t.status === "fail")
+      .forEach((test) => {
         output.push(`\n${test.name}`);
         if (test.error?.message) {
           output.push(`Error: ${test.error.message}`);
         }
         if (test.error?.stack) {
-          output.push('Stack trace:');
+          output.push("Stack trace:");
           output.push(test.error.stack);
         }
       });
   }
-  
-  return output.join('\n');
+
+  return output.join("\n");
 }
 
 // Server setup
@@ -100,14 +108,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "run_tests",
-        description: "Run Vitest tests for the project. Can run specific test files or all tests.",
+        description:
+          "Run Vitest tests for the project. Can run specific test files or all tests.",
         inputSchema: zodToJsonSchema(RunTestsArgsSchema) as ToolInput,
       },
       {
         name: "watch_tests",
         description: "Watch test files and run them automatically on changes.",
         inputSchema: zodToJsonSchema(WatchTestsArgsSchema) as ToolInput,
-      }
+      },
     ],
   };
 });
@@ -123,15 +132,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for run_tests: ${parsed.error}`);
         }
 
-        const vitest = await startVitest('test', [], {
+        const vitest = await startVitest("test", [], {
           root: projectDir,
-          watch: parsed.data.updateMode === 'watch',
-          include: parsed.data.testFiles,
+          watch: parsed.data.updateMode === "watch",
+          include: parsed.data.testFiles || undefined,  // Pass undefined if no files specified
         });
+
+        if (!vitest) {
+          throw new Error("Failed to start Vitest");
+        }
 
         const result = await vitest.start();
         const formattedResults = formatTestResults(result);
-        
+
         await vitest.close();
 
         return {
@@ -150,11 +163,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error(`Invalid arguments for watch_tests: ${parsed.error}`);
         }
 
-        const vitest = await startVitest('test', [], {
+        const vitest = await startVitest("test", [], {
           root: projectDir,
           watch: true,
-          include: parsed.data.testFiles,
+          include: parsed.data.testFiles || undefined,  // Pass undefined if no files specified
         });
+
+        if (!vitest) {
+          throw new Error("Failed to start Vitest");
+        }
 
         // Start watching but don't wait for completion
         void vitest.start();
