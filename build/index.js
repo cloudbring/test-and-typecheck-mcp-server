@@ -107,14 +107,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 if (!parsed.success) {
                     throw new Error(`Invalid arguments for run_tests: ${parsed.error}`);
                 }
-                // Configure Vitest to minimize console output
-                const vitest = await startVitest("test", [], {
+                const options = {
                     root: projectDir,
                     watch: parsed.data.updateMode === "watch",
-                    include: parsed.data.testFiles,
                     reporters: [], // Disable default reporters to prevent console output
                     silent: true, // Suppress most of Vitest's output
-                });
+                };
+                if (parsed.data.testFiles) {
+                    options.include = parsed.data.testFiles;
+                }
+                // Configure Vitest to minimize console output
+                const vitest = await startVitest("test", [], options);
                 if (!vitest) {
                     throw new Error("Failed to start Vitest");
                 }
