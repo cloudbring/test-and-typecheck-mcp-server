@@ -9,10 +9,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { startVitest, TestResult } from "vitest/node";
+import { startVitest } from "vitest/node";
 import path from "path";
-import { isTestCase } from "./isTestCase.js";
-import { extractTestCases, TestCaseResult } from "./extractTestCases.js";
+import { extractTestCases } from "./extractTestCases.js";
+import { formatTestResults } from "./formatTestResults.js";
 
 // Command line argument parsing
 const args = process.argv.slice(2);
@@ -53,41 +53,6 @@ const WatchTestsArgsSchema = z.object({
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
-
-// function formatTestResults(results: any): string {
-//   const testResults = results.state.getTestResults();
-//   const output = [];
-
-//   // Summary counts
-//   const passed = testResults.filter((t) => t.status === "pass").length;
-//   const failed = testResults.filter((t) => t.status === "fail").length;
-//   const skipped = testResults.filter((t) => t.status === "skip").length;
-
-//   output.push("Test Run Summary:");
-//   output.push(`Total Files: ${results.getTestFiles().length}`);
-//   output.push(`✓ Passed: ${passed}`);
-//   output.push(`✗ Failed: ${failed}`);
-//   output.push(`- Skipped: ${skipped}`);
-
-//   // Detailed failures
-//   if (failed > 0) {
-//     output.push("\nFailures:");
-//     testResults
-//       .filter((t) => t.status === "fail")
-//       .forEach((test) => {
-//         output.push(`\n${test.name}`);
-//         if (test.error?.message) {
-//           output.push(`Error: ${test.error.message}`);
-//         }
-//         if (test.error?.stack) {
-//           output.push("Stack trace:");
-//           output.push(test.error.stack);
-//         }
-//       });
-//   }
-
-//   return output.join("\n");
-// }
 
 // Server setup
 const server = new Server(
@@ -155,30 +120,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         const files = vitest.state.getFiles();
-        let allTestResults: TestCaseResult[] = [];
+        let allTestResults = [];
 
         for (const fileTask of files) {
           const testFile = vitest.state.getReportedEntity(fileTask);
-
           const fileResults = extractTestCases(testFile);
           allTestResults.push(...fileResults);
         }
 
-        // const formattedResults = formatTestResults({
-        //   state: {
-        //     getTestResults: () => testResults,
-        //   },
-        //   getTestFiles: () => files,
-        // });
-
+        const formattedOutput = formatTestResults(allTestResults);
         await vitest.close();
 
         return {
           content: [
             {
               type: "text",
-              // text: formattedResults,
-              text: JSON.stringify(allTestResults, null, 2),
+              text: formattedOutput,
             },
           ],
         };

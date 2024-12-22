@@ -1,4 +1,4 @@
-export function extractTestCases(vitest, entity, parentPath = []) {
+export function extractTestCases(entity, parentPath = []) {
     if (!entity)
         return [];
     // Base case: Test case
@@ -18,7 +18,7 @@ export function extractTestCases(vitest, entity, parentPath = []) {
             ...parentPath,
             entity.type === "suite" ? entity.name : entity.moduleId,
         ];
-        return Array.from(entity.children ?? []).flatMap((child) => extractTestCases(vitest, child, currentPath));
+        return Array.from(entity.children ?? []).flatMap((child) => extractTestCases(child, currentPath));
     }
     return [];
 }

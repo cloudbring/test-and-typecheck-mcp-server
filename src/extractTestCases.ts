@@ -1,15 +1,10 @@
 import { TestCase, TestSuite, TestModule, Vitest } from "vitest/node.js";
-
-export interface TestCaseResult {
-  name: string;
-  path: string[]; // The hierarchy path (module name -> suite names -> test name)
-  result: unknown;
-}
+import { FormattedTestCase } from "./formatTestResults.js";
 
 export function extractTestCases(
   entity: TestCase | TestSuite | TestModule | undefined,
   parentPath: string[] = []
-): TestCaseResult[] {
+): FormattedTestCase[] {
   if (!entity) return [];
 
   // Base case: Test case
