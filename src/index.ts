@@ -9,8 +9,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { startVitest } from "vitest/node";
+import { startVitest, TestResult } from "vitest/node";
 import path from "path";
+import { isTestCase } from "./isTestCase.js";
+import { extractTestCases, TestCaseResult } from "./extractTestCases.js";
 
 // Command line argument parsing
 const args = process.argv.slice(2);
@@ -52,50 +54,40 @@ const WatchTestsArgsSchema = z.object({
 const ToolInputSchema = ToolSchema.shape.inputSchema;
 type ToolInput = z.infer<typeof ToolInputSchema>;
 
-interface TestResult {
-  name: string;
-  status: string;
-  duration?: number;
-  error?: {
-    message: string;
-    stack?: string;
-  };
-}
+// function formatTestResults(results: any): string {
+//   const testResults = results.state.getTestResults();
+//   const output = [];
 
-function formatTestResults(results: any): string {
-  const testResults = results.state.getTestResults() as TestResult[];
-  const output = [];
+//   // Summary counts
+//   const passed = testResults.filter((t) => t.status === "pass").length;
+//   const failed = testResults.filter((t) => t.status === "fail").length;
+//   const skipped = testResults.filter((t) => t.status === "skip").length;
 
-  // Summary counts
-  const passed = testResults.filter((t) => t.status === "pass").length;
-  const failed = testResults.filter((t) => t.status === "fail").length;
-  const skipped = testResults.filter((t) => t.status === "skip").length;
+//   output.push("Test Run Summary:");
+//   output.push(`Total Files: ${results.getTestFiles().length}`);
+//   output.push(`✓ Passed: ${passed}`);
+//   output.push(`✗ Failed: ${failed}`);
+//   output.push(`- Skipped: ${skipped}`);
 
-  output.push("Test Run Summary:");
-  output.push(`Total Files: ${results.getTestFiles().length}`);
-  output.push(`✓ Passed: ${passed}`);
-  output.push(`✗ Failed: ${failed}`);
-  output.push(`- Skipped: ${skipped}`);
+//   // Detailed failures
+//   if (failed > 0) {
+//     output.push("\nFailures:");
+//     testResults
+//       .filter((t) => t.status === "fail")
+//       .forEach((test) => {
+//         output.push(`\n${test.name}`);
+//         if (test.error?.message) {
+//           output.push(`Error: ${test.error.message}`);
+//         }
+//         if (test.error?.stack) {
+//           output.push("Stack trace:");
+//           output.push(test.error.stack);
+//         }
+//       });
+//   }
 
-  // Detailed failures
-  if (failed > 0) {
-    output.push("\nFailures:");
-    testResults
-      .filter((t) => t.status === "fail")
-      .forEach((test) => {
-        output.push(`\n${test.name}`);
-        if (test.error?.message) {
-          output.push(`Error: ${test.error.message}`);
-        }
-        if (test.error?.stack) {
-          output.push("Stack trace:");
-          output.push(test.error.stack);
-        }
-      });
-  }
-
-  return output.join("\n");
-}
+//   return output.join("\n");
+// }
 
 // Server setup
 const server = new Server(
@@ -158,8 +150,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           throw new Error("Failed to start Vitest");
         }
 
-        const result = await vitest.start();
-        const formattedResults = formatTestResults(result);
+        await vitest.start();
+        // Wait a bit for tests to complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        const files = vitest.state.getFiles();
+        let allTestResults: TestCaseResult[] = [];
+
+        for (const fileTask of files) {
+          const testFile = vitest.state.getReportedEntity(fileTask);
+
+          const fileResults = extractTestCases(testFile);
+          allTestResults.push(...fileResults);
+        }
+
+        // const formattedResults = formatTestResults({
+        //   state: {
+        //     getTestResults: () => testResults,
+        //   },
+        //   getTestFiles: () => files,
+        // });
 
         await vitest.close();
 
@@ -167,7 +177,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [
             {
               type: "text",
-              text: formattedResults,
+              // text: formattedResults,
+              text: JSON.stringify(allTestResults, null, 2),
             },
           ],
         };

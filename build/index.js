@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { startVitest } from "vitest/node";
 import path from "path";
+import { extractTestCases } from "./extractTestCases.js";
 // Command line argument parsing
 const args = process.argv.slice(2);
 if (args.length === 0) {
@@ -42,36 +43,36 @@ const WatchTestsArgsSchema = z.object({
         .describe("Optional test file or array of test files to watch"),
 });
 const ToolInputSchema = ToolSchema.shape.inputSchema;
-function formatTestResults(results) {
-    const testResults = results.state.getTestResults();
-    const output = [];
-    // Summary counts
-    const passed = testResults.filter((t) => t.status === "pass").length;
-    const failed = testResults.filter((t) => t.status === "fail").length;
-    const skipped = testResults.filter((t) => t.status === "skip").length;
-    output.push("Test Run Summary:");
-    output.push(`Total Files: ${results.getTestFiles().length}`);
-    output.push(`✓ Passed: ${passed}`);
-    output.push(`✗ Failed: ${failed}`);
-    output.push(`- Skipped: ${skipped}`);
-    // Detailed failures
-    if (failed > 0) {
-        output.push("\nFailures:");
-        testResults
-            .filter((t) => t.status === "fail")
-            .forEach((test) => {
-            output.push(`\n${test.name}`);
-            if (test.error?.message) {
-                output.push(`Error: ${test.error.message}`);
-            }
-            if (test.error?.stack) {
-                output.push("Stack trace:");
-                output.push(test.error.stack);
-            }
-        });
-    }
-    return output.join("\n");
-}
+// function formatTestResults(results: any): string {
+//   const testResults = results.state.getTestResults();
+//   const output = [];
+//   // Summary counts
+//   const passed = testResults.filter((t) => t.status === "pass").length;
+//   const failed = testResults.filter((t) => t.status === "fail").length;
+//   const skipped = testResults.filter((t) => t.status === "skip").length;
+//   output.push("Test Run Summary:");
+//   output.push(`Total Files: ${results.getTestFiles().length}`);
+//   output.push(`✓ Passed: ${passed}`);
+//   output.push(`✗ Failed: ${failed}`);
+//   output.push(`- Skipped: ${skipped}`);
+//   // Detailed failures
+//   if (failed > 0) {
+//     output.push("\nFailures:");
+//     testResults
+//       .filter((t) => t.status === "fail")
+//       .forEach((test) => {
+//         output.push(`\n${test.name}`);
+//         if (test.error?.message) {
+//           output.push(`Error: ${test.error.message}`);
+//         }
+//         if (test.error?.stack) {
+//           output.push("Stack trace:");
+//           output.push(test.error.stack);
+//         }
+//       });
+//   }
+//   return output.join("\n");
+// }
 // Server setup
 const server = new Server({
     name: "vitest-server",
@@ -121,14 +122,29 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 if (!vitest) {
                     throw new Error("Failed to start Vitest");
                 }
-                const result = await vitest.start();
-                const formattedResults = formatTestResults(result);
+                await vitest.start();
+                // Wait a bit for tests to complete
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                const files = vitest.state.getFiles();
+                let allTestResults = [];
+                for (const fileTask of files) {
+                    const testFile = vitest.state.getReportedEntity(fileTask);
+                    const fileResults = extractTestCases(vitest, testFile);
+                    allTestResults.push(...fileResults);
+                }
+                // const formattedResults = formatTestResults({
+                //   state: {
+                //     getTestResults: () => testResults,
+                //   },
+                //   getTestFiles: () => files,
+                // });
                 await vitest.close();
                 return {
                     content: [
                         {
                             type: "text",
-                            text: formattedResults,
+                            // text: formattedResults,
+                            text: JSON.stringify(allTestResults, null, 2),
                         },
                     ],
                 };
@@ -138,14 +154,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 if (!parsed.success) {
                     throw new Error(`Invalid arguments for watch_tests: ${parsed.error}`);
                 }
-                // Configure Vitest to minimize console output
-                const vitest = await startVitest("test", [], {
+                const options = {
                     root: projectDir,
                     watch: true,
-                    include: parsed.data.testFiles,
                     reporters: [], // Disable default reporters
                     silent: true, // Suppress most of Vitest's output
-                });
+                };
+                if (parsed.data.testFiles) {
+                    options.include = parsed.data.testFiles;
+                }
+                // Configure Vitest to minimize console output
+                const vitest = await startVitest("test", [], options);
                 if (!vitest) {
                     throw new Error("Failed to start Vitest");
                 }
