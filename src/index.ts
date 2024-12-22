@@ -13,6 +13,7 @@ import { startVitest } from "vitest/node";
 import path from "path";
 import { extractTestCases } from "./extractTestCases.js";
 import { formatTestResults } from "./formatTestResults.js";
+import { runTypeCheck, formatTypeErrors } from "./typeCheck.js";
 
 // Command line argument parsing
 const args = process.argv.slice(2);
@@ -34,21 +35,17 @@ const RunTestsArgsSchema = z.object({
       return Array.isArray(files) ? files : [files];
     })
     .describe("Optional test file or array of test files to run"),
-  updateMode: z
-    .enum(["run", "watch"])
-    .default("run")
-    .describe("Whether to run once or watch for changes"),
 });
 
-const WatchTestsArgsSchema = z.object({
-  testFiles: z
+const TypeCheckArgsSchema = z.object({
+  files: z
     .union([z.string(), z.array(z.string()), z.null(), z.undefined()])
     .optional()
     .transform((files) => {
       if (!files) return undefined;
       return Array.isArray(files) ? files : [files];
     })
-    .describe("Optional test file or array of test files to watch"),
+    .describe("Optional file or array of files to type check"),
 });
 
 const ToolInputSchema = ToolSchema.shape.inputSchema;
@@ -78,9 +75,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: zodToJsonSchema(RunTestsArgsSchema) as ToolInput,
       },
       {
-        name: "watch_tests",
-        description: "Watch test files and run them automatically on changes.",
-        inputSchema: zodToJsonSchema(WatchTestsArgsSchema) as ToolInput,
+        name: "type_check",
+        description:
+          "Run TypeScript type checking on the project. Returns any type errors found.",
+        inputSchema: zodToJsonSchema(TypeCheckArgsSchema) as ToolInput,
       },
     ],
   };
@@ -99,7 +97,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
         const options: Parameters<typeof startVitest>[2] = {
           root: projectDir,
-          watch: parsed.data.updateMode === "watch",
+          watch: false,
           reporters: [], // Disable default reporters to prevent console output
           silent: true, // Suppress most of Vitest's output
         };
@@ -141,41 +139,27 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
 
-      case "watch_tests": {
-        const parsed = WatchTestsArgsSchema.safeParse(args);
+      case "type_check": {
+        const parsed = TypeCheckArgsSchema.safeParse(args);
         if (!parsed.success) {
-          throw new Error(`Invalid arguments for watch_tests: ${parsed.error}`);
+          throw new Error(`Invalid arguments for type_check: ${parsed.error}`);
         }
 
-        const options: Parameters<typeof startVitest>[2] = {
-          root: projectDir,
-          watch: true,
-          reporters: [], // Disable default reporters
-          silent: true, // Suppress most of Vitest's output
-        };
+        try {
+          const errors = runTypeCheck(projectDir);
+          const formattedOutput = formatTypeErrors(errors);
 
-        if (parsed.data.testFiles) {
-          options.include = parsed.data.testFiles;
+          return {
+            content: [
+              {
+                type: "text",
+                text: formattedOutput,
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(`Type checking failed: ${error instanceof Error ? error.message : String(error)}`);
         }
-
-        // Configure Vitest to minimize console output
-        const vitest = await startVitest("test", [], options);
-
-        if (!vitest) {
-          throw new Error("Failed to start Vitest");
-        }
-
-        // Start watching but don't wait for completion
-        void vitest.start();
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: "Test watch mode started. Tests will run automatically on file changes.",
-            },
-          ],
-        };
       }
 
       default:
@@ -194,8 +178,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function runServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // console.error("Vitest MCP Server running on stdio");
-  // console.error("Project directory:", projectDir);
 }
 
 runServer().catch((error) => {
