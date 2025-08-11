@@ -9,7 +9,9 @@ This document provides practical examples of using the Test & Typecheck MCP Serv
 ```bash
 # Start the server
 mcp-server-vitest /path/to/your/project
+```
 
+```json
 # From MCP client, call run_tests with no parameters
 {
   "method": "tools/call",
@@ -22,7 +24,7 @@ mcp-server-vitest /path/to/your/project
 
 ### Running Specific Test Files
 
-```bash
+```json
 # Single test file
 {
   "method": "tools/call",
@@ -102,8 +104,11 @@ class TestAndTypecheckProvider {
   private client: Client | null = null;
   
   async activate(context: vscode.ExtensionContext) {
-    const workspaceRoot = vscode.workspace.rootPath;
-    if (!workspaceRoot) return;
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) {
+      vscode.window.showWarningMessage('No workspace folder open.');
+      return;
+    }
     
     // Start MCP server
     const transport = new StdioClientTransport({
@@ -139,9 +144,14 @@ class TestAndTypecheckProvider {
     });
     
     // Display results in output channel
-    const output = vscode.window.createOutputChannel('Test Results');
-    output.show();
-    output.appendLine(result.content[0].text);
+    if (!this.output) {
+      this.output = vscode.window.createOutputChannel('Test Results');
+    }
+    this.output.show();
+    this.output.appendLine(result.content[0].text);
+  }
+
+  private output?: vscode.OutputChannel;
   }
   
   async typeCheckCurrentFile() {
@@ -186,18 +196,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
         
-      - name: Install MCP Server
-        run: npm install -g mcp-server-vitest
+      - name: Build MCP Server
+        run: npm run build
         
       - name: Run Type Check via MCP
         run: |
           echo '{"method":"tools/call","params":{"name":"type_check","arguments":{}}}' | \
-          mcp-server-vitest ${{ github.workspace }}
+          node build/index.js ${{ github.workspace }}
           
       - name: Run Tests via MCP  
         run: |
           echo '{"method":"tools/call","params":{"name":"run_tests","arguments":{}}}' | \
-          mcp-server-vitest ${{ github.workspace }}
+          node build/index.js ${{ github.workspace }}
 ```
 
 ### AI Assistant Integration
@@ -373,6 +383,8 @@ interface DevWorkflow {
       files: modifiedFiles
     });
     
+import fs from 'fs';
+
     // Find and run related tests
     const testFiles = modifiedFiles
       .map(file => file.replace(/\.ts$/, '.test.ts'))

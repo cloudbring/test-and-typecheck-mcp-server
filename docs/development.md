@@ -29,7 +29,7 @@ npm start /path/to/test-project
 
 ### Project Structure
 
-```
+```text
 test-and-typecheck-mcp-server/
 ├── src/
 │   ├── index.ts              # Main server entry point
@@ -135,19 +135,13 @@ EOF
 Test the MCP server:
 
 ```bash
-# Start the server
 cd ../test-and-typecheck-mcp-server
 npm run build
-node build/index.js ../test-project
 
-# In another terminal, send MCP requests
+# Send MCP requests (each command starts a new server instance)
 echo '{"method":"tools/list","params":{}}' | node build/index.js ../test-project
-
-echo '{"method":"tools/call","params":{"name":"run_tests","arguments":{}}}' | \
-  node build/index.js ../test-project
-  
-echo '{"method":"tools/call","params":{"name":"type_check","arguments":{}}}' | \
-  node build/index.js ../test-project
+echo '{"method":"tools/call","params":{"name":"run_tests","arguments":{}}}' | node build/index.js ../test-project
+echo '{"method":"tools/call","params":{"name":"type_check","arguments":{}}}' | node build/index.js ../test-project
 ```
 
 #### Automated Testing
@@ -315,7 +309,8 @@ try {
   const result = await executeTool(args);
   return formatSuccess(result);
 } catch (error) {
-  throw new Error(`Tool execution failed: ${error.message}`);
+  const err = error instanceof Error ? error : new Error(String(error));
+  throw new Error(`Tool execution failed: ${err.message}`);
 }
 
 // 3. Top-level error handling
@@ -415,7 +410,7 @@ export function formatNewToolResult(result: NewToolResult): string {
 
 ### Commit Message Format
 
-```
+```text
 type(scope): description
 
 - feat: new feature

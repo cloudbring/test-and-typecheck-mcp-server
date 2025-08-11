@@ -137,8 +137,10 @@ Lists all available tools provided by this server.
 
 ```json
 {
+  "jsonrpc": "2.0",
   "method": "tools/list",
-  "params": {}
+  "params": {},
+  "id": 1
 }
 ```
 
@@ -193,13 +195,15 @@ Invokes a specific tool with provided arguments.
 
 ```json
 {
+  "jsonrpc": "2.0",
   "method": "tools/call",
   "params": {
     "name": "<tool_name>",
     "arguments": {
       // Tool-specific parameters
     }
-  }
+  },
+  "id": 2
 }
 ```
 
@@ -212,8 +216,9 @@ Invokes a specific tool with provided arguments.
       "type": "text",
       "text": "<formatted_results>"
     }
-  ],
-  "isError": false  // Present only if error occurred
+  ]
+  // isError is optional; only include on error:
+  // "isError": true
 }
 ```
 

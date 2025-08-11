@@ -136,6 +136,20 @@ npm install
 pnpm install
 ```
 
+### Running the Server
+
+**Local Development:**
+```bash
+npm run build
+node build/index.js <project-directory>
+```
+
+**Global CLI (if published):**
+```bash
+npm install -g mcp-server-vitest
+mcp-server-vitest <project-directory>
+```
+
 ## Configuration
 The server requires a project directory as a command line argument:
 
@@ -222,7 +236,7 @@ mcp-client call run_tests '{}'
 ## Security & PII
 - No external network calls beyond spawning local CLIs
 - Tool outputs may include file paths and code excerpts; avoid embedding secrets in source or test output
-- Consider redacting or truncating very large outputs
+- Consider redacting or truncating large outputs
 
 ## Troubleshooting
 - **Vitest not found**: Ensure vitest is installed in the project or available in PATH
