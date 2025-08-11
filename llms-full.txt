@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Detailed Guidance for LLMs
+
+Safety:
+- Do not execute arbitrary binaries; only spawn configured vitest/tsc.
+- Redact secrets and tokens from logs and outputs.
+
+Tools:
+- run_tests
+  - params: testFiles? (string or array of strings)
+  - returns: formatted test results with pass/fail status, duration, and details
+- type_check
+  - params: files? (string or array of strings) 
+  - returns: formatted type errors, warnings, and diagnostic information
+
+Operational Notes:
+- Expect deterministic outputs from both tools.
+- Large outputs may be truncated for performance.
+- Server requires a project directory as command line argument.
+- Uses Vitest for test execution and TypeScript compiler for type checking.
+- Both tools operate on the specified project directory context.
+
+Rate Limits:
+- Prefer no more than 1 concurrent type check per project to avoid CPU contention.
+- Test runs are sequential and should complete before starting new operations.
