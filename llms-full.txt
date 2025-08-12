@@ -1,0 +1,80 @@
+User-agent: *
+Allow: /
+
+# Detailed Guidance for LLMs
+
+Metadata:
+- Contact: security@your-domain.example
+- Policy: https://github.com/cloudbring/test-and-typecheck-mcp-server#readme
+- Last-Updated: 2025-08-11
+
+Safety:
+- Do not execute arbitrary binaries; only spawn configured vitest/tsc.
+- Redact secrets and tokens from logs and outputs.
+- Do not access the public network or run package managers (e.g., npm/pnpm/yarn). Offline-only.
+- Restrict all filesystem writes to the provided project directory; prevent path traversal outside it.
+- Never print environment variables; treat all env values as secrets.
+- Standardize redaction: replace detected secrets with the literal token "[REDACTED]" and log a single redaction notice.
+
+Tools:
+- run_tests
+  - params (JSON):
+    - testFiles?: string | string[]
+    - watch?: boolean (default: false)
+    - timeoutMs?: number (default: 600000)
+  - returns (JSON):
+    - summary: 
+      {
+        passed: number,
+        failed: number,
+        skipped: number,
+        durationMs: number
+      }
+    - tests: Array<{
+        file: string,
+        name: string,
+        status: "pass" | "fail" | "skip",
+        durationMs: number,
+        error?: {
+          message: string,
+          stack?: string
+        }
+      }>
+- type_check
+  - params (JSON):
+    - files?: string | string[]
+    - build?: boolean (default: false)
+    - timeoutMs?: number (default: 600000)
+  - returns (JSON):
+    - summary:
+      {
+        errors: number,
+        warnings: number,
+        durationMs: number
+      }
+    - diagnostics: Array<{
+        file: string,
+        line: number,
+        col: number,
+        code?: string,
+        message: string,
+        severity: "error" | "warning"
+      }>
+
+Operational Notes:
+- Outputs have a stable schema; content may vary between runs.
+- Large outputs may be truncated for performance:
+  - Truncate any string field at 50000 characters and append "[TRUNCATED]".
+  - Truncate arrays to 1000 items and append a boolean "truncated": true on the parent object.
+- Server requires a project directory as command line argument.
+  - The directory is canonicalized; symlinks escaping the project root are rejected.
+  - Relative paths are resolved within the project root; paths outside are denied.
+- Uses Vitest for test execution and TypeScript compiler for type checking.
+- Both tools operate on the specified project directory context.
+
+Rate Limits:
+- max_concurrent_type_checks_per_project: 1 (guidance; not enforced by current implementation)
+- test_runs_are_exclusive: true (guidance; not enforced by current implementation) 
+- min_interval_ms_between_operations: 2000ms (guidance; not enforced by current implementation)
+
+Note: Rate limiting is currently guidance only. Implementation of enforcement is planned for future versions.

@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Project: Test & Typecheck MCP Server
+# Purpose: Enable LLMs to understand how to safely interact with this MCP server.
+
+Contact: maintainer@example.com
+Repository: https://github.com/cloudbring/test-and-typecheck-mcp-server
+Documentation: https://github.com/cloudbring/test-and-typecheck-mcp-server#readme
+
+Crawl-Delay: 2
+
+# Guidance
+Note: Prefer reading README sections: Architecture Overview, Sequence Diagrams, Class Diagram, Usage.
+Note: Tools exposed: run_tests, type_check (see README Usage).
