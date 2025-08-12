@@ -36,10 +36,10 @@ interface RunTestsParams {
 
 ```typescript
 interface RunTestsResult {
-  content: [{
+  content: Array<{
     type: "text";
     text: string; // Formatted test results
-  }];
+  }>;
 }
 ```
 
@@ -93,10 +93,10 @@ interface TypeCheckParams {
 
 ```typescript
 interface TypeCheckResult {
-  content: [{
+  content: Array<{
     type: "text";
     text: string; // Formatted type check results
-  }];
+  }>;
 }
 ```
 
@@ -158,8 +158,7 @@ Lists all available tools provided by this server.
           "testFiles": {
             "anyOf": [
               {"type": "string"},
-              {"type": "array", "items": {"type": "string"}},
-              {"type": "null"}
+              {"type": "array", "items": {"type": "string"}}
             ],
             "description": "Optional test file or array of test files to run"
           }
@@ -175,8 +174,7 @@ Lists all available tools provided by this server.
           "files": {
             "anyOf": [
               {"type": "string"},
-              {"type": "array", "items": {"type": "string"}},
-              {"type": "null"}
+              {"type": "array", "items": {"type": "string"}}
             ],
             "description": "Optional file or array of files to type check"
           }
@@ -193,7 +191,7 @@ Invokes a specific tool with provided arguments.
 
 #### Request Format
 
-```json
+```jsonc
 {
   "jsonrpc": "2.0",
   "method": "tools/call",
@@ -209,6 +207,8 @@ Invokes a specific tool with provided arguments.
 
 #### Response Format
 
+Note: The JSON below represents the JSON-RPC result payload (`result`), not the full response envelope.
+
 ```json
 {
   "content": [
@@ -217,12 +217,12 @@ Invokes a specific tool with provided arguments.
       "text": "<formatted_results>"
     }
   ]
-  // isError is optional; only include on error:
-  // "isError": true
 }
 ```
 
 ## Error Handling
+
+Note: The JSON examples in this section show the JSON-RPC result payload (`result`) only. In actual responses, this is wrapped in a JSON-RPC envelope with `jsonrpc`, `id`, and either `result` or `error`.
 
 ### Schema Validation Errors
 

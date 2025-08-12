@@ -64,7 +64,7 @@ mcp-server-vitest /path/to/your/project
 
 ### Type Checking
 
-```bash
+```json
 # Check entire project
 {
   "method": "tools/call",
@@ -344,6 +344,8 @@ echo "✅ Quality gate passed"
 
 ```typescript
 // Developer IDE integration script
+import fs from 'fs';
+
 interface DevWorkflow {
   projectPath: string;
   mcpClient: MCPClient;
@@ -383,8 +385,6 @@ interface DevWorkflow {
       files: modifiedFiles
     });
     
-import fs from 'fs';
-
     // Find and run related tests
     const testFiles = modifiedFiles
       .map(file => file.replace(/\.ts$/, '.test.ts'))
