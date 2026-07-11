@@ -10,10 +10,11 @@ import {
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { startVitest } from "vitest/node";
-import path from "path";
+import path from "node:path";
 import { extractTestCases } from "./extractTestCases.js";
-import { formatTestResults } from "./formatTestResults.js";
+import { formatTestResults, type FormattedTestCase } from "./formatTestResults.js";
 import { runTypeCheck, formatTypeErrors } from "./typeCheck.js";
+// removed unused import
 
 // Command line argument parsing
 const args = process.argv.slice(2);
@@ -70,14 +71,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "run_tests",
-        description:
-          "Run Vitest tests for the project. Can run specific test files or all tests.",
+        description: "Run Vitest tests for the project. Can run specific test files or all tests.",
         inputSchema: zodToJsonSchema(RunTestsArgsSchema) as ToolInput,
       },
       {
         name: "type_check",
-        description:
-          "Run TypeScript type checking on the project. Returns any type errors found.",
+        description: "Run TypeScript type checking on the project. Returns any type errors found.",
         inputSchema: zodToJsonSchema(TypeCheckArgsSchema) as ToolInput,
       },
     ],
@@ -118,7 +117,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         const files = vitest.state.getFiles();
-        let allTestResults = [];
+        const allTestResults: FormattedTestCase[] = [];
 
         for (const fileTask of files) {
           const testFile = vitest.state.getReportedEntity(fileTask);
@@ -176,8 +175,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 // Start server
 async function runServer() {
+  console.log("Starting server...");
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  server.oninitialized = () => console.log(`Server initialized at ${new Date().toISOString()}`);
+  server.onclose = () => console.log(`Server closed at ${new Date().toISOString()}`);
+  server.onerror = (error) => console.error("Server error:", error);
 }
 
 runServer().catch((error) => {

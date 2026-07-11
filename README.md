@@ -18,6 +18,61 @@ An MCP Server that exposes tools for running tests (Vitest) and performing TypeS
 - [Roadmap](#roadmap)
 - [License](#license)
 
+## MCP Setup Instructions
+
+### Claude Code
+Add to your `claude_code_config.json`:
+```json
+{
+  "mcpServers": {
+    "test-and-typecheck": {
+      "command": "npx",
+      "args": ["js-test-and-typecheck-mcp-server", "/path/to/your/project"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Cursor
+Add to your Cursor settings (`~/.cursor/mcp_settings.json` or workspace `.cursor/mcp_settings.json`):
+```json
+{
+  "mcpServers": {
+    "test-and-typecheck": {
+      "command": "npx",
+      "args": ["js-test-and-typecheck-mcp-server", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+### VSCode (with Continue extension)
+Add to your Continue config (`~/.continue/config.json`):
+```json
+{
+  "models": [...],
+  "mcpServers": {
+    "test-and-typecheck": {
+      "command": "npx",
+      "args": ["js-test-and-typecheck-mcp-server", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+### Universal JSON Configuration
+For any MCP-compatible client, use this configuration:
+```json
+{
+  "command": "npx",
+  "args": ["js-test-and-typecheck-mcp-server", "/path/to/your/project"],
+  "env": {}
+}
+```
+
+Replace `/path/to/your/project` with the absolute path to the TypeScript project you want to test and type-check.
+
 ## Overview
 This server implements the Model Context Protocol (MCP) to provide:
 - Test execution using Vitest
